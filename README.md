@@ -1,7 +1,10 @@
 # UNBEATABLE Better Discord Activity
-A mod to improve the Discord activity in the hit rhythm game UNBEATABLE!
 
-## Mod Installation Instructions 
+A mod to improve the Discord activity in the hit rhythm game UNBEATABLE!
+Note that this mod only adds support for arcade mode.
+
+## Mod Installation Instructions
+
 Download BepInEx from [here](https://github.com/BepInEx/BepInEx/releases) and extract the BepInEx folder from the zip into the main UNBEATABLE game code folder (the one that contains UNBEATABLE.exe). Then run the game once and close it. Then put the mod DLL into the BepInEx\plugins folder.
 The structure should then be:
 
