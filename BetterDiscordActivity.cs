@@ -1,17 +1,11 @@
 using BepInEx;
 using BepInEx.Logging;
-using System.Collections.Generic;
 using HarmonyLib;
 using Rhythm;
-using DG.Tweening;
-using UnityEngine;
-using Arcade.UI.SongSelect;
-using System.IO;
 using System.Reflection;
-using System.Reflection.Emit;
 using System;
-using System.Linq;
 using UnityEngine.SceneManagement;
+using Discord;
 
 
 namespace BetterDiscordActivity
@@ -23,7 +17,7 @@ namespace BetterDiscordActivity
         public const string PLUGIN_GUID = "net.stefyfresh.BetterDiscordActivity";
         public const string PLUGIN_NAME = "Stefyfresh Better Discord Activity";
 
-        public const string PLUGIN_VERSION = "1.1.0";
+        public const string PLUGIN_VERSION = "1.2.0";
         internal static new ManualLogSource Logger;
 
         private void Awake()
@@ -35,10 +29,12 @@ namespace BetterDiscordActivity
         }
     }
 
+
+
     [HarmonyPatch]
-    class ActivityControllerSceneLoadedPatches
+    class OnSceneLoadedPatch
     {
-        static System.Reflection.MethodBase TargetMethod()
+        static MethodBase TargetMethod()
         {
             // Need to use scuffed Reflection stuff because method is weird
             return typeof(DiscordActivityController).GetMethod("OnSceneLoad", BindingFlags.NonPublic | BindingFlags.Instance).MakeGenericMethod([typeof(Scene), typeof(LoadSceneMode)]);
@@ -48,16 +44,17 @@ namespace BetterDiscordActivity
             __instance.hasUpdatedSongActivity = false;
             __instance.storyStateActivityTimer = 0f;
             __instance.loadedSceneName = ((Scene)Convert.ChangeType(LoadedScene, typeof(Scene))).name;
-            __instance.rhythmController = global::UnityEngine.Object.FindObjectOfType<RhythmController>();
-            __instance.discordComponent = global::UnityEngine.Object.FindObjectOfType<DiscordComponent>();
+            __instance.rhythmController = UnityEngine.Object.FindObjectOfType<RhythmController>();
+            __instance.discordComponent = UnityEngine.Object.FindObjectOfType<DiscordComponent>();
             return false;
         }
     }
 
 
+
     [HarmonyPatch(typeof(JeffBezosController))]
     [HarmonyPatch("Awake")]
-    internal class JeffBezosControllerPatches
+    internal class JeffBezosControllerPatch
     {
         static bool Prefix(ref JeffBezosController __instance)
         {
@@ -71,98 +68,68 @@ namespace BetterDiscordActivity
     }
 
 
+
     [HarmonyPatch(typeof(DiscordComponent))]
     [HarmonyPatch("Awake")]
-    internal class DiscordComponentPatches
+    internal class DiscordComponentAwakePatch
     {
         static bool Prefix(ref DiscordComponent __instance)
         {
             if (!__instance.IsConnected && __instance.name == "JeffBezos")
             {
-                __instance.IsConnected = true;
                 try
                 {
-                    // App ID removed just in case
-                    __instance.discord = new global::Discord.Discord(UNBEATABLEAppID, 1UL);
+                    __instance.discord = new Discord.Discord(DiscordAppID.id, 1UL);
+                    __instance.activityManager = __instance.discord.GetActivityManager();
+                    __instance.IsConnected = true;
                 }
-                catch
-                {
-                    __instance.IsConnected = false;
-                    return false;
-                }
-                __instance.activityManager = __instance.discord.GetActivityManager();
-                // __instance.activity.Name = "UNBEATABLE";
-                // __instance.activity.Details = "Testing\nTest";
-                // __instance.activity.State = "State";
-                // __instance.updateActivity = true;
+                catch { }
             }
             return false;
         }
     }
 
 
+
     [HarmonyPatch(typeof(DiscordActivityController))]
     [HarmonyPatch("Update")]
-    internal class DiscordActivityControllerUpdatePatches
+    internal class ActivityControllerUpdatePatch
     {
         static bool Prefix(ref DiscordActivityController __instance)
         {
-            if (__instance.discordComponent == null)
-            {
-                __instance.discordComponent = global::UnityEngine.Object.FindObjectOfType<DiscordComponent>();
-            }
-            if (__instance.activities == null)
-            {
-                __instance.activities = new DiscordActivities();
-            }
+            if (__instance.discordComponent == null) __instance.discordComponent = global::UnityEngine.Object.FindObjectOfType<DiscordComponent>();
+            if (__instance.activities == null) __instance.activities = new DiscordActivities();
             if (__instance.discordComponent == null || !__instance.discordComponent.IsConnected || __instance.hasUpdatedSongActivity)
             {
                 return false;
             }
+
             if (__instance.rhythmController != null && __instance.rhythmController.beatmap != null)
             {
-                __instance.discordComponent.activity.Details = "Playing " + __instance.rhythmController.beatmap.metadata.title + string.Format(" [{0}]", __instance.rhythmController.beatmap.metadata.GetDifficulty("Custom"));
+                __instance.discordComponent.activity.Details = "Playing " + __instance.rhythmController.beatmap.metadata.title + string.Format($" [{__instance.rhythmController.beatmap.metadata.GetDifficulty("Custom")}]");
                 // __instance.discordComponent.activity.Details = "Playing " + __instance.rhythmController.beatmap.metadata.title + string.Format(" [{0}]", __instance.rhythmController.beatmap.metadata.GetDifficulty("Custom")) + " - " + __instance.rhythmController.beatmap.metadata.artist;
                 string state = "";
-                if (JeffBezosController.GetNoFail() > 0)
-                {
-                    state += "/no fail";
-                }
-                if (JeffBezosController.GetAssistMode() > 0)
-                {
-                    state += "/assist";
-                }
+                if (JeffBezosController.GetNoFail() > 0) state += "/no fail";
+                if (JeffBezosController.GetAssistMode() > 0) state += "/assist";
                 if (JeffBezosController.GetSongSpeed() > 0)
                 {
                     int songSpeed = JeffBezosController.GetSongSpeed();
                     state += string.Format("/{0}", (songSpeed == 1) ? "halftime" : "doubletime");
                 }
-                if (JeffBezosController.GetCriticalMode() > 0)
-                {
-                    state += "/critical";
-                }
-                if (state != "")
-                {
-                    state = "/" + state;
-                }
+                if (JeffBezosController.GetCriticalMode() > 0) state += "/critical";
+                if (state != "") state = "/" + state;
                 __instance.discordComponent.activity.State = state;
                 __instance.discordComponent.updateActivity = true;
                 __instance.hasUpdatedSongActivity = true;
+
+                // TODO: PLEASE make this a dynamic lookup
+                if (__instance.discordComponent.activity.Details == "Playing Ş̸̫̬̞͇̪̖̭̞̯̗̖͐̀ͅW̷̢̛͍̠̤̜͉̺̟̥͕͐́͒̿̔̕͘͘I̶͇̘̯̍̽͘N̵̢̨̨̬̘̞͎͔̈́̈́͊̏̒̿̎̕͜͝͝ͅG [AUTOMATIC]") __instance.discordComponent.activity.Details = "Playing SWING [AUTOMATIC]";
                 return false;
             }
             string details = "";
-            if (__instance.loadedSceneName == "ArcadeModeMenu")
-            {
-                details = "In Arcade Mode";
-            }
-            if (__instance.loadedSceneName == "C2_MainMenu")
-            {
-                details = "In Main Menu";
-            }
-            if (__instance.loadedSceneName == "ScoreScreenArcadeMode")
-            {
-                details = "Reviewing Scores";
-            }
+            if (__instance.loadedSceneName == "ArcadeModeMenu") details = "In Arcade Mode";
+            if (__instance.loadedSceneName == "C2_MainMenu") details = "In Main Menu";
+            if (__instance.loadedSceneName == "ScoreScreenArcadeMode") details = "Reviewing Scores";
             if (details != __instance.discordComponent.activity.Details)
             {
                 __instance.discordComponent.activity.Details = details;
@@ -175,4 +142,46 @@ namespace BetterDiscordActivity
         }
     }
 
+
+
+    [HarmonyPatch(typeof(DiscordComponent))]
+    [HarmonyPatch("Update")]
+    internal class DiscordComponentUpdatePatch
+    {
+        static bool Prefix(ref DiscordComponent __instance)
+        {
+            if (!__instance.IsConnected) return false;
+
+            try
+            {
+                __instance.discord.RunCallbacks();
+            }
+            catch
+            {
+                if (!__instance.IsConnected && __instance.name == "JeffBezos")
+                {
+                    try
+                    {
+                        // TODO: this doesn't work?
+                        __instance.discord.Dispose();
+                        __instance.discord = new Discord.Discord(DiscordAppID.id, 1UL);
+                        __instance.activityManager = __instance.discord.GetActivityManager();
+                        __instance.IsConnected = true;
+                    }
+                    catch { }
+                }
+            }
+
+            if (__instance.updateActivity)
+            {
+                try
+                {
+                    __instance.activityManager.UpdateActivity(__instance.activity, delegate (Result result) { });
+                    __instance.updateActivity = false;
+                }
+                catch { }
+            }
+            return false;
+        }
+    }
 }
