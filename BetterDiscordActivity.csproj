@@ -6,11 +6,11 @@
     <Version>1.2.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
-    <RestoreAdditionalProjectSources>
+    <!-- <RestoreAdditionalProjectSources>
       https://api.nuget.org/v3/index.json;
       https://nuget.bepinex.dev/v3/index.json;
       https://nuget.samboy.dev/v3/index.json
-    </RestoreAdditionalProjectSources>
+    </RestoreAdditionalProjectSources> -->
     <RootNamespace>BetterDiscordActivity</RootNamespace>
   </PropertyGroup>
 
@@ -50,5 +50,4 @@
       <HintPath>..\Hints\DOTween.dll</HintPath>
     </Reference>
   </ItemGroup>
-
 </Project>

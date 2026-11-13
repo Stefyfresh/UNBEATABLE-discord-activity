@@ -6,6 +6,7 @@ using System.Reflection;
 using System;
 using UnityEngine.SceneManagement;
 using Discord;
+using BepInEx.Configuration;
 
 
 namespace BetterDiscordActivity
@@ -14,11 +15,12 @@ namespace BetterDiscordActivity
     [BepInProcess("UNBEATABLE.exe")]
     public class BetterDiscordActivity : BaseUnityPlugin
     {
-        public const string PLUGIN_GUID = "net.stefyfresh.BetterDiscordActivity";
+        public const string PLUGIN_GUID = "com.stefyfresh.BetterDiscordActivity";
         public const string PLUGIN_NAME = "Stefyfresh Better Discord Activity";
+        public const string PLUGIN_VERSION = "1.2.2";
 
-        public const string PLUGIN_VERSION = "1.2.0";
         internal static new ManualLogSource Logger;
+        public static ConfigEntry<bool> modEnabled;
 
         private void Awake()
         {
@@ -26,6 +28,13 @@ namespace BetterDiscordActivity
             Logger.LogInfo($"Plugin {PLUGIN_GUID} is loaded!");
             var harmony = new Harmony(PLUGIN_GUID);
             harmony.PatchAll();
+
+            modEnabled = Config.Bind(
+                "General",
+                "ModEnabled",
+                true,
+                "Enables or disables the mod."
+            );
         }
     }
 
@@ -53,7 +62,7 @@ namespace BetterDiscordActivity
 
 
     [HarmonyPatch(typeof(JeffBezosController))]
-    [HarmonyPatch("Awake")]
+    [HarmonyPatch(nameof(JeffBezosController.Awake))]
     internal class JeffBezosControllerPatch
     {
         static bool Prefix(ref JeffBezosController __instance)
@@ -70,7 +79,7 @@ namespace BetterDiscordActivity
 
 
     [HarmonyPatch(typeof(DiscordComponent))]
-    [HarmonyPatch("Awake")]
+    [HarmonyPatch(nameof(DiscordComponent.Awake))]
     internal class DiscordComponentAwakePatch
     {
         static bool Prefix(ref DiscordComponent __instance)
@@ -92,51 +101,64 @@ namespace BetterDiscordActivity
 
 
     [HarmonyPatch(typeof(DiscordActivityController))]
-    [HarmonyPatch("Update")]
+    [HarmonyPatch(nameof(DiscordActivityController.Update))]
     internal class ActivityControllerUpdatePatch
     {
         static bool Prefix(ref DiscordActivityController __instance)
         {
-            if (__instance.discordComponent == null) __instance.discordComponent = global::UnityEngine.Object.FindObjectOfType<DiscordComponent>();
+            if (__instance.discordComponent == null) __instance.discordComponent = UnityEngine.Object.FindObjectOfType<DiscordComponent>();
             if (__instance.activities == null) __instance.activities = new DiscordActivities();
             if (__instance.discordComponent == null || !__instance.discordComponent.IsConnected || __instance.hasUpdatedSongActivity)
             {
                 return false;
             }
 
-            if (__instance.rhythmController != null && __instance.rhythmController.beatmap != null)
-            {
-                __instance.discordComponent.activity.Details = "Playing " + __instance.rhythmController.beatmap.metadata.title + string.Format($" [{__instance.rhythmController.beatmap.metadata.GetDifficulty("Custom")}]");
-                // __instance.discordComponent.activity.Details = "Playing " + __instance.rhythmController.beatmap.metadata.title + string.Format(" [{0}]", __instance.rhythmController.beatmap.metadata.GetDifficulty("Custom")) + " - " + __instance.rhythmController.beatmap.metadata.artist;
-                string state = "";
-                if (JeffBezosController.GetNoFail() > 0) state += "/no fail";
-                if (JeffBezosController.GetAssistMode() > 0) state += "/assist";
-                if (JeffBezosController.GetSongSpeed() > 0)
-                {
-                    int songSpeed = JeffBezosController.GetSongSpeed();
-                    state += string.Format("/{0}", (songSpeed == 1) ? "halftime" : "doubletime");
-                }
-                if (JeffBezosController.GetCriticalMode() > 0) state += "/critical";
-                if (state != "") state = "/" + state;
-                __instance.discordComponent.activity.State = state;
-                __instance.discordComponent.updateActivity = true;
-                __instance.hasUpdatedSongActivity = true;
 
-                // TODO: PLEASE make this a dynamic lookup
-                if (__instance.discordComponent.activity.Details == "Playing Ş̸̫̬̞͇̪̖̭̞̯̗̖͐̀ͅW̷̢̛͍̠̤̜͉̺̟̥͕͐́͒̿̔̕͘͘I̶͇̘̯̍̽͘N̵̢̨̨̬̘̞͎͔̈́̈́͊̏̒̿̎̕͜͝͝ͅG [AUTOMATIC]") __instance.discordComponent.activity.Details = "Playing SWING [AUTOMATIC]";
-                return false;
-            }
-            string details = "";
-            if (__instance.loadedSceneName == "ArcadeModeMenu") details = "In Arcade Mode";
-            if (__instance.loadedSceneName == "C2_MainMenu") details = "In Main Menu";
-            if (__instance.loadedSceneName == "ScoreScreenArcadeMode") details = "Reviewing Scores";
-            if (details != __instance.discordComponent.activity.Details)
+            if (!BetterDiscordActivity.modEnabled.Value)
             {
-                __instance.discordComponent.activity.Details = details;
-                __instance.discordComponent.activity.State = "";
-                __instance.discordComponent.updateActivity = true;
-                __instance.hasUpdatedSongActivity = true;
-                return false;
+                if (__instance.discordComponent.activity.Details != "")
+                {
+                    __instance.discordComponent.activity.Details = "";
+                    __instance.discordComponent.activity.State = "";
+                    __instance.discordComponent.updateActivity = true;
+                    __instance.hasUpdatedSongActivity = true;
+                    return false;
+                }
+            }
+            else
+            {
+                if (__instance.rhythmController != null && __instance.rhythmController.beatmap != null)
+                {
+                    __instance.discordComponent.activity.Details = "Playing " + __instance.rhythmController.beatmap.metadata.title + string.Format($" [{__instance.rhythmController.beatmap.metadata.GetDifficulty("Custom")}]");
+                    string state = "";
+                    if (JeffBezosController.GetNoFail() > 0) state += "/no fail";
+                    if (JeffBezosController.GetAssistMode() > 0) state += "/assist";
+                    if (JeffBezosController.GetSongSpeed() > 0)
+                    {
+                        int songSpeed = JeffBezosController.GetSongSpeed();
+                        state += string.Format("/{0}", (songSpeed == 1) ? "halftime" : "doubletime");
+                    }
+                    if (JeffBezosController.GetCriticalMode() > 0) state += "/critical";
+                    if (state != "") state = "/" + state;
+                    __instance.discordComponent.activity.State = state;
+                    __instance.discordComponent.updateActivity = true;
+                    __instance.hasUpdatedSongActivity = true;
+
+                    // Fix SWING
+                    if (__instance.discordComponent.activity.Details == "Playing Ş̸̫̬̞͇̪̖̭̞̯̗̖͐̀ͅW̷̢̛͍̠̤̜͉̺̟̥͕͐́͒̿̔̕͘͘I̶͇̘̯̍̽͘N̵̢̨̨̬̘̞͎͔̈́̈́͊̏̒̿̎̕͜͝͝ͅG [AUTOMATIC]") __instance.discordComponent.activity.Details = "Playing SWING [AUTOMATIC]";
+                    return false;
+                }
+                string details = "";
+                if (__instance.loadedSceneName == "ArcadeModeMenu") details = "In Arcade Mode";
+                if (__instance.loadedSceneName == "C2_MainMenu") details = "In Main Menu";
+                if (__instance.loadedSceneName == "ScoreScreenArcadeMode") details = "Reviewing Scores";
+                if (details != __instance.discordComponent.activity.Details)
+                {
+                    __instance.discordComponent.activity.Details = details;
+                    __instance.discordComponent.activity.State = "";
+                    __instance.discordComponent.updateActivity = true;
+                    __instance.hasUpdatedSongActivity = true;
+                }
             }
             return false;
         }
@@ -145,7 +167,7 @@ namespace BetterDiscordActivity
 
 
     [HarmonyPatch(typeof(DiscordComponent))]
-    [HarmonyPatch("Update")]
+    [HarmonyPatch(nameof(DiscordComponent.Update))]
     internal class DiscordComponentUpdatePatch
     {
         static bool Prefix(ref DiscordComponent __instance)
