@@ -1,34 +1,18 @@
 # UNBEATABLE Better Discord Activity
 
 A mod to improve the Discord activity in the hit rhythm game UNBEATABLE!
-Note that this mod only adds support for arcade mode.
+This mod adds support for showing what Arcade Mode song you are playing and what modifiers you are using!
+
+## Sample
+
+![Example screenshot from Discord](img/example.png)
 
 ## Mod Installation Instructions
 
-- Download the latest release of the mod from the releases page, and extract the DLL file from inside the zip
-- Download BepInEx from [here](https://github.com/BepInEx/BepInEx/releases) and extract the BepInEx folder from the zip into the main UNBEATABLE game code folder (the one that contains UNBEATABLE.exe)
-- Run the game once and close it
-- Put the mod DLL into the BepInEx\plugins folder
+For installation instructions, refer to my mod installation guide here:
 
-The structure should then be:
+https://gist.github.com/Stefyfresh/1140bf18c5f3895bd807258c16483887
 
-<pre>
-UNBEATABLE
-├─── UNBEATABLE.exe
-├─── UNBEATABLE_Data
-├─── {some other folders and files}
-├─── .doorstop_version
-├─── changelog.txt
-├─── doorstop_config.ini
-├─── winhttp.dll
-└─── BepInEx
-    ├─── cache
-    ├─── config
-    ├─── core
-    ├─── patchers
-    └─── plugins
-        ├─── SomeMod.dll
-        └─── SomeOtherMod.dll
-</pre>
+---
 
-Once the mod is in the folder, restart the game and it should load.
+###### All code for Better Discord Activity was written by me, by hand.
